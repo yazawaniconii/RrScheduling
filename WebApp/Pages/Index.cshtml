@@ -1,0 +1,291 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home page";
+}
+
+<div class="text-center">
+    <div>
+        <span class="badge bg-success" id="is-connect">已连接后端</span>
+        <span class="badge bg-danger" id="is-disconnect">已断开后端</span>
+        <span class="badge bg-info text-dark" id="is-start">正在调度</span>
+        <span class="badge bg-warning text-dark" id="is-pause">暂停调度</span>
+    </div>
+    <input type="file" class="form-control w-25 mb-3 " id="fileUploader"/>
+    <form class="row g-2">
+      <div class="col-auto">
+        <input type="text" disabled="disabled" readonly class="form-control-plaintext" value="时间片大小">
+      </div>
+      <div class="col-auto">
+        <input type="number" class="form-control" id="timeslice" placeholder="默认500ms">
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-primary mb-3" id="submit-timeslice">确定</button>
+      </div>
+    </form>
+
+    <div class="d-flex justify-content-around align-items-center">
+        <div class="d-inline-flex p-2">
+            <table class="table table-primary caption-top" id="running">
+                <caption>运行进程</caption>
+                <thead>
+                <tr>
+                    <th scope="col">名称</th>
+                    <th scope="col">运行时间</th>
+                    <th scope="col">剩余时间</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="btn-group h-25" role="group" aria-label="Basic outlined example">
+            @* <button id="get" class="btn btn-outline-primary">获取信息</button> *@
+            <button id="open" class="btn btn-outline-primary">连接后端</button>
+            <button id="close" class="btn btn-outline-primary">断开后端</button>
+            <button id="start" class="btn btn-outline-primary">开始调度</button>
+            <button id="pause" class="btn btn-outline-primary">暂停调度</button>
+        </div>
+    </div>
+
+    <div class="container-fluid overflow-hidden">
+        <div class="row gx-1">
+            <div class="col">
+                <table class="table table-light caption-top" id="all-table">
+                    <caption>全部队列</caption>
+                    <thead>
+                    <tr>
+                        <th scope="col">名称</th>
+                        <th scope="col">指令类型</th>
+                        <th scope="col">剩余时间</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="col">
+                <table class="table table-primary caption-top" id="ready-table">
+                    <caption>就绪队列</caption>
+                    <thead>
+                    <tr>
+                        <th scope="col">名称</th>
+                        <th scope="col">运行时间</th>
+                        <th scope="col">剩余时间</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="col">
+                <table class="table table-secondary caption-top" id="input-table">
+                    <caption>输入等待</caption>
+                    <thead>
+                    <tr>
+                        <th scope="col">名称</th>
+                        <th scope="col">运行时间</th>
+                        <th scope="col">剩余时间</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="col">
+                <table class="table table-success caption-top" id="output-table">
+                    <caption>输出等待</caption>
+                    <thead>
+                    <tr>
+                        <th scope="col">名称</th>
+                        <th scope="col">运行时间</th>
+                        <th scope="col">剩余时间</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="col">
+                <table class="table table-info caption-top" id="wait-table">
+                    <caption>其他等待</caption>
+                    <thead>
+                    <tr>
+                        <th scope="col">名称</th>
+                        <th scope="col">运行时间</th>
+                        <th scope="col">剩余时间</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <textarea type="text" class="form-control" id="text-display" rows="10"></textarea>
+</div>
+
+@section Scripts
+{
+    <script>
+const wsUrl = "wss://localhost:7098/ws";
+let ws;
+websocketInit();
+    
+$("#get").click(()=>{
+    ws.send("GetAllInfo");
+});
+$("#close").click(()=>{
+    ws.close();
+    $("#is-disconnect").show();
+    $("#is-connect").hide();
+});
+$("#open").click(()=>{
+    if (ws) {
+        ws.close();
+    }
+    websocketInit();
+    $("#is-connect").show();
+    $("#is-disconnect").hide();
+});
+$("#pause").click(()=>{
+    ws.send("Pause");
+});
+$("#start").click(()=>{
+    ws.send("Start");
+});
+$("#submit-timeslice").click(()=>{
+    let value= $("#timeslice").val();
+    if (value==""){
+        value=500
+    }
+    ws.send("TimeSlice"+value);
+    return false;
+});
+
+function display(data){
+    // console.log(data);
+    let obj = JSON.parse(data);
+    let pauseSign = $("#is-pause");
+    let startSign = $("#is-start");
+    if (obj.IsPause){
+        pauseSign.show();
+        startSign.hide();
+    }else{
+        pauseSign.hide();
+        startSign.show();
+    }
+    if (obj.IsStop || obj.IsPause){
+        return;
+    }
+    let allQueue = obj.Queue;
+    let readyQueue = obj.ReadyQueue;
+    let inputQueue = obj.InputQueue;
+    let outputQueue = obj.OutputQueue;
+    let waitQueue = obj.WaitQueue;
+    let currentProcess = obj.CurrentProcess;
+    if (currentProcess == null){
+        return;
+    }
+    let runTime =currentProcess.CurrentInstruction.RunTime;
+    let remainTime = currentProcess.RemainTime;
+    $("#running>tbody>tr").html(
+                        '<td>'+'P'+currentProcess.Name+'</td>'
+                        +'<td>'+runTime+'</td>'
+                        +'<td>'+remainTime+'</td>');
+    traverseDisplayAllQueue(allQueue, "#all-table>tbody");
+    traverseDisplay(readyQueue, "#ready-table>tbody");
+    traverseDisplay(inputQueue, "#input-table>tbody");
+    traverseDisplay(outputQueue, "#output-table>tbody");
+    traverseDisplay(waitQueue, "#wait-table>tbody");
+}
+
+function traverseDisplay(list, selector){
+    let listElement =$(selector) 
+    listElement.html("");
+    for (let i in list) {
+        let runTime = list[i].CurrentInstruction.RunTime;
+        let remainTime = list[i].RemainTime;
+        // listElement.append('<tr><td>'+'P'+list[i].Name+" "+runTime+" "+remainTime+'</td></tr>');
+        listElement.append('<tr>'
+                            +'<td>'+'P'+list[i].Name+'</td>'
+                            +'<td>'+runTime+'</td>'
+                            +'<td>'+remainTime+'</td>'
+                            +'</tr>');
+    }
+    }
+function traverseDisplayAllQueue(list, selector){
+    
+    let listElement =$(selector) 
+    listElement.html("");
+    for (let i in list) {
+        let type = list[i].CurrentInstruction.Type;
+        let remainTime = list[i].RemainTime;
+        // listElement.append('<tr><td>'+'P'+list[i].Name+" "+runTime+" "+remainTime+'</td></tr>');
+        listElement.append('<tr>'
+                            +'<td>'+'P'+list[i].Name+'</td>'
+                            +'<td>'+getType(type)+'</td>'
+                            +'<td>'+remainTime+'</td>'
+                            +'</tr>');
+    }
+    }
+function websocketInit(){
+    ws = new WebSocket(wsUrl);
+        
+    ws.onopen = ()=>{
+        console.log("connected");
+        $("#is-connect").show();
+        $("#is-disconnect").hide();
+    }
+
+    ws.onmessage = (ev)=>{
+        display(ev.data);
+    }
+    
+    ws.onerror = (ev)=>{
+        console.log(ev);
+    }
+
+    ws.onclose = ()=>{
+        console.log("closed");
+        clearInterval(interval);
+        $("#is-disconnect").show();
+        $("#is-connect").hide();
+    }
+    
+    let interval = setInterval(()=>{
+        ws.send("GetAllInfo");
+    }, 100);
+    
+}
+
+$("#fileUploader").change(function (){
+        if (this.files.length === 0) {
+          console.log('请选择文件！');
+          return;
+        }
+      
+        const reader = new FileReader();
+        reader.onload = function fileReadCompleted() {
+          // 当读取完成时，内容只在`reader.result`中
+          ws.send("List"+reader.result);
+          $("#text-display").val(reader.result);
+        };
+        reader.readAsText(this.files[0]);
+  });
+
+
+function getType(n){
+    switch (n){
+        case 0:
+            return "Input";
+        case 1:
+            return "Output";
+        case 2:
+            return "Wait";
+        case 3:
+            return "Calc";
+        case 4:
+            return "Halt";
+        default:
+            return ;
+    }
+    }
+</script>
+}
