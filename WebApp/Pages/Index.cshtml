@@ -128,7 +128,9 @@
 @section Scripts
 {
     <script>
-const wsUrl = "ws://localhost:5118/ws";
+let domain = document.domain; 
+let path = window.location.pathname;
+const wsUrl = "wss://" + domain + path + "ws";
 let ws;
 websocketInit();
 
