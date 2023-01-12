@@ -13,6 +13,8 @@ builder.Services.AddSingleton<IHostedService, WebApp.Services.Scheduling>();
 
 var app = builder.Build();
 
+app.UseHttpLogging();
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -22,11 +24,12 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UsePathBase("/rr");
 app.UseStaticFiles();
 
 var websocketOpts = new WebSocketOptions
 {
-    KeepAliveInterval = TimeSpan.FromSeconds(1)
+    KeepAliveInterval = TimeSpan.FromSeconds(10)
 };
 app.UseWebSockets(websocketOpts);
 app.UseMiddleware<WebsocketHandler>();
