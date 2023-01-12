@@ -244,6 +244,13 @@ public class Scheduling
         _appendQueue(AllQueue, node, in AllQueueLock);
         AppendSpecificQueue(node);
     }
+    public void AddProcesses(LinkedList<Pcb> list)
+    {
+        foreach (var pcb in list)
+        {
+            AddProcess(pcb);
+        }
+    }
 
     public void InitQueue(LinkedList<Pcb> list)
     {
@@ -252,12 +259,20 @@ public class Scheduling
             return;
         }
 
-        foreach (var pcb in list)
-        {
-            AddProcess(pcb);
-        }
+        AddProcesses(list);
 
         _isInit = true;
+    }
+
+    public void Cleanup()
+    {
+        IsPause = true;
+        AllQueue.Clear();
+        ReadyQueue.Clear();
+        InputQueue.Clear();
+        WaitQueue.Clear();
+        OutputQueue.Clear();
+        IsPause = false;
     }
 
     private Scheduling()

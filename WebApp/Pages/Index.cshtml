@@ -11,7 +11,11 @@
         <span class="badge bg-info text-dark" id="is-start">正在调度</span>
         <span class="badge bg-warning text-dark" id="is-pause">暂停调度</span>
     </div>
-    <input type="file" class="form-control w-25 mb-3 " id="fileUploader"/>
+      <div>
+    <input type="file" class="form-control w-auto mb-3 d-inline-block" id="fileUploader"/>
+        <button class="btn btn-primary mb-3 align-bottom" id="default-queue">使用默认进程队列</button>
+        <button class="btn btn-primary mb-3 align-bottom" id="cleanup">清空队列</button>
+      </div>
     <form class="row g-2">
       <div class="col-auto">
         <input type="text" disabled="disabled" readonly class="form-control-plaintext" value="时间片大小">
@@ -124,9 +128,46 @@
 @section Scripts
 {
     <script>
-const wsUrl = "wss://localhost:7098/ws";
+const wsUrl = "ws://localhost:5118/ws";
 let ws;
 websocketInit();
+
+const defaultQueue = `P1
+C10
+I20
+C40
+I30
+C20
+O30
+H00
+P2
+I10
+C20
+W10
+O20
+H00
+P3
+C10
+I20
+W20
+C20
+O10
+H00
+P4
+W10
+C50
+I10
+O20
+H00
+P5
+O15
+I20
+C10
+W20
+C40
+O10
+H00
+`;
     
 $("#get").click(()=>{
     ws.send("GetAllInfo");
@@ -158,6 +199,17 @@ $("#submit-timeslice").click(()=>{
     ws.send("TimeSlice"+value);
     return false;
 });
+
+$("#default-queue").click(()=>{
+    ws.send("List"+defaultQueue);
+    let e = $("#text-display");
+    e.val(e.val()+defaultQueue);
+})
+
+$("#cleanup").click(()=>{
+    ws.send("Cleanup");
+    $("#text-display").val("");
+})
 
 function display(data){
     // console.log(data);

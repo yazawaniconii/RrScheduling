@@ -65,7 +65,8 @@ public class WebsocketHandler
                 var bytes = Encoding.UTF8.GetBytes(listString);
                 var stream = new MemoryStream(bytes);
                 var list = await Utils.Parser(new StreamReader(stream));
-                if (list != null) Scheduling.Instant.InitQueue(list);
+                // if (list != null) Scheduling.Instant.InitQueue(list);
+                if (list != null) Scheduling.Instant.AddProcesses(list);
             }
             else if (receiveString == "Pause")
             {
@@ -74,6 +75,10 @@ public class WebsocketHandler
             else if (receiveString == "Start")
             {
                 Scheduling.Instant.IsPause = false;
+            }
+            else if (receiveString == "Cleanup")
+            {
+                Scheduling.Instant.Cleanup();
             }
             else if (receiveString.Substring(0, 9) == "TimeSlice")
             {
